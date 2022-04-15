@@ -1,0 +1,237 @@
+PORT_AUDIO_FILE= " pa_stable_v190600_20161030.tgz "
+PORT_AUDIO_DOWNLOAD_URL= " http://www.portaudio.com/archives/ $PORT_AUDIO_FILE "
+TEST_MODEL_DOWNLOAD= " https://github.com/Sensory/alexa-rpi/blob/master/models/spot-alexa-rpi-31000.snsr "
+BUILD_TESTS= ${BUILD_TESTS :- ' true ' }
+CURRENT_DIR= " $( pwd ) "
+INSTALL_BASE= ${INSTALL_BASE :- " $CURRENT_DIR " }
+SOURCE_FOLDER= ${SDK_LOC :- ' ' }
+THIRD_PARTY_FOLDER= ${THIRD_PARTY_LOC :- ' terceiro ' }
+BUILD_FOLDER= ${BUILD_FOLDER :- ' construir ' }
+SOUNDS_FOLDER= ${SOUNDS_FOLDER :- ' sons ' }
+DB_FOLDER= ${DB_FOLDER :- ' db ' }
+SOURCE_PATH= " $INSTALL_BASE / $SOURCE_FOLDER "
+THIRD_PARTY_PATH= " $INSTALL_BASE / $THIRD_PARTY_FOLDER "
+BUILD_PATH= " $INSTALL_BASE / $BUILD_FOLDER "
+SOUNDS_PATH= " $INSTALL_BASE / $SOUNDS_FOLDER "
+DB_PATH= " $INSTALL_BASE / $DB_FOLDER "
+CONFIG_DB_PATH= " $DB_PATH "
+UNIT_TEST_MODEL_PATH= " $INSTALL_BASE /avs-device-sdk/KWD/inputs/SensoryModels/ "
+UNIT_TEST_MODEL= " $THIRD_PARTY_PATH /alexa-rpi/models/spot-alexa-rpi-31000.snsr "
+INPUT_CONFIG_FILE= " $ SOURCE_PATH /avs-device-sdk/Integration/AlexaClientSDKConfig.json "
+OUTPUT_CONFIG_FILE= " $BUILD_PATH /Integration/AlexaClientSDKConfig.json "
+TEMP_CONFIG_FILE= " $BUILD_PATH /Integration/tmp_AlexaClientSDKConfig.json "
+TEST_SCRIPT= " $INSTALL_BASE /test.sh "
+LIB_SUFFIX= " um "
+ANDROID_CONFIG_FILE= " "
+# Número de série do dispositivo padrão se nada for especificado
+DEVICE_SERIAL_NUMBER= " 123456 "
+# Nome padrão do fabricante do dispositivo
+DEVICE_MANUFACTURER_NAME= ${DEVICE_MANUFACTURER_NAME :- " Fabricante de teste " }
+# Descrição padrão do dispositivo
+DEVICE_DESCRIPTION= ${DEVICE_DESCRIPTION :- " Dispositivo de teste " }
+GSTREAMER_AUDIO_SINK= " autoaudiosink "
+build_port_audio () {
+  # constrói o áudio da porta
+  eco
+  echo  " ==============> CONSTRUÇÃO DE ÁUDIO DA PORTA =============== "
+  eco
+   empurrou $ THIRD_PARTY_PATH
+  wget -c $PORT_AUDIO_DOWNLOAD_URL
+  tar zxf $PORT_AUDIO_FILE
+  porta- áudio empurrado
+  ./configure --without-jack
+  fazer
+  popd
+  popd
+}
+get_plataforma () {
+  uname_str= ` uname -a `
+  resultado= " "
+  if [[ " $uname_str "  ==   " Linux " * ]] && [[ -f /etc/os-release ]]
+  então
+    sys_id= ` cat /etc/os-release | grep " ^ID= " `
+    if [[ " $sys_id "  ==  " ID=raspbian " ]]
+    então
+      echo  " Framboesa pi "
+    fi
+  elif [[ " $uname_str "  ==   " MINGW64 " * ]]
+  então
+    echo  " Windows mingw64 "
+  fi
+}
+show_help () {
+  echo   ' Uso: setup.sh <config-json-file> [OPÇÕES] '
+  echo   ' O <config-json-file> pode ser baixado do portal do desenvolvedor e deve conter o seguinte: '
+  echo   '    "clientId": "<ID do cliente OAuth>" '
+  echo   '    "productId": "<nome do seu produto para dispositivo>" '
+  eco   ' '
+  echo   ' Parâmetros opcionais '
+  echo   '   -s <serial-number> Se nada for fornecido, o número de série do dispositivo padrão é 123456 '
+  echo   '   -a <file-name> O arquivo que contém as configurações de instalação do Android (por exemplo, androidConfig.txt) '
+  echo   '   -d <description> A descrição do dispositivo. '
+  echo   '   -m <fabricante> O nome do fabricante do dispositivo. '
+  echo   '   -h Mostra esta ajuda e sai '
+}
+if [[ $#  -lt 1 ]] ;  então
+    mostre ajuda
+    saída 1
+fi
+CONFIG_JSON_FILE= $1
+se [ !  -f  " $CONFIG_JSON_FILE " ] ;  então
+    echo  " Arquivo json de configuração não encontrado! "
+    mostre ajuda
+    saída 1
+fi
+turno 1
+OPÇÕES=s:a:m:d:h
+while  getopts  " $OPTIONS " opt ;  Faz
+    caso  $opt  in
+        s)
+            DEVICE_SERIAL_NUMBER= " $OPTARG "
+            ;;
+        a )
+            ANDROID_CONFIG_FILE= " $OPTARG "
+            se [ !  -f  " $ANDROID_CONFIG_FILE " ] ;  então
+                echo  " Arquivo de configuração do Android não encontrado! "
+                saída 1
+            fi
+            fonte  $ANDROID_CONFIG_FILE
+            ;;
+        e)
+            DEVICE_DESCRIPTION= " $OPTARG "
+            ;;
+        m)
+            DEVICE_MANUFACTURER_NAME= " $OPTARG "
+            ;;
+        h)
+            mostre ajuda
+            saída 1
+            ;;
+    esac
+feito
+se [[ !  " $DEVICE_SERIAL_NUMBER "  =~ [0-9a-zA-Z_]+ ]] ;  então
+   echo  ' O número de série do dispositivo é inválido! '
+   saída 1
+fi
+# A plataforma de destino para a compilação.
+PLATAFORMA= ${PLATAFORMA :- $(get_platform)}
+if [ " $PLATFORM "  ==  " Raspberry pi " ]
+então
+  fonte pi.sh
+elif [ " $PLATFORM "  ==  " Windows mingw64 " ]
+então
+  fonte mingw.sh
+  senão
+    PLATFORM_LOWER= $( echo " ${PLATFORM} "  | tr ' [:superior:] '  ' [:inferior:] ' )
+    if [ " $PLATFORM_LOWER "  ==  " android " ]
+    então
+      PLATAFORMA= " Android "
+      fonte android.sh
+    senão
+      echo  " O script de instalação não suporta o sistema atual. (System: $( uname -a ) ) "
+      saída 1
+    fi
+fi
+echo  " ############################################### ############################### "
+echo  " ############################################### ############################### "
+eco  " "
+eco  " "
+echo  " AVS Device SDK $PLATFORM Script - Termos e Acordos "
+eco  " "
+eco  " "
+echo  " O AVS Device SDK depende de várias bibliotecas, ambientes de terceiros, "
+echo  " e/ou outros pacotes de software que são instalados usando este script de "
+echo  " fontes de terceiros ( \" Dependências externas \" ). Estes são os termos e condições "
+echo  " associado às Dependências Externas "
+echo  " (disponível em https://github.com/alexa/avs-device-sdk/wiki/Dependencies) que "
+echo  " você precisa concordar em cumprir se optar por instalar as Dependências Externas. "
+eco  " "
+eco  " "
+echo  " Se você não concordar com todos os termos e condições associados ao Externo "
+echo  " Dependências, digite \" QUIT \" na linha de comando quando solicitado pelo instalador. "
+echo  " Senão digite \" CONCORDO \" . "
+eco  " "
+eco  " "
+echo  " ############################################### ############################### "
+echo  " ############################################### ############################### "
+ler entrada
+input= $( echo $input  | awk ' {print tolower($0)} ' )
+if [ $input  ==  ' quit ' ]
+então
+  saída 1
+elif [ $input  ==  ' concordo ' ]
+então
+  echo  " ############################################### ############################### "
+  echo  " Prosseguindo com a instalação "
+  echo  " ############################################### ############################### "
+senão
+  echo  " ############################################### ############################### "
+  echo  ' Opção desconhecida '
+  echo  " ############################################### ############################### "
+  saída 1
+fi
+se [ !  -d  " $BUILD_PATH " ]
+então
+  # Verifique se os pacotes necessários estão instalados
+  echo  " ==============> INSTALANDO FERRAMENTAS E PACOTE NECESSÁRIOS ============ "
+  eco
+  install_dependencies
+  # cria / caminhos
+  eco
+  echo  " ==============> CRIANDO CAMINHOS E OBTENDO ARQUIVOS DE SOM ============ "
+  eco
+  mkdir -p $SOURCE_PATH
+  mkdir -p $THIRD_PARTY_PATH
+  mkdir -p $SOUNDS_PATH
+  mkdir -p $DB_PATH
+  run_os_specifics
+  se [ !  -d  " ${SOURCE_PATH} /avs-device-sdk " ]
+  então
+    # obter sdk
+    eco
+    echo  " ==============> SDK DE CLONAGEM ============== "
+    eco
+    cd  $SOURCE_PATH
+    git clone $CLONE_URL
+  fi
+  # faz o SDK
+  eco
+  echo  " ==============> CONSTRUINDO SDK ============== "
+  eco
+  mkdir -p $BUILD_PATH
+  cd  $BUILD_PATH
+  cmake " $ SOURCE_PATH /avs-device-sdk " \
+      -DCMAKE_BUILD_TYPE=DEBUG\
+      " ${CMAKE_PLATFORM_SPECIFIC[@]} "
+  cd  $BUILD_PATH
+  make SampleApp -j2
+senão
+  cd  $BUILD_PATH
+  make SampleApp -j2
+fi
+eco
+echo  " ==============> SALVAR ARQUIVO DE CONFIGURAÇÃO ============== "
+eco
+# Cria o arquivo de configuração com a configuração do audioSink no início do arquivo
+cat <<  EOF > " $OUTPUT_CONFIG_FILE "
+{
+    "gstreamerMediaPlayer":{
+        "audioSink":" $GSTREAMER_AUDIO_SINK "
+    },
+EOF
+cd  $INSTALL_BASE
+bash genConfig.sh config.json $DEVICE_SERIAL_NUMBER  $CONFIG_DB_PATH  $SOURCE_PATH /avs-device-sdk $TEMP_CONFIG_FILE \
+  -DSDK_CONFIG_MANUFACTURER_NAME= " $DEVICE_MANUFACTURER_NAME " -DSDK_CONFIG_DEVICE_DESCRIPTION= " $DEVICE_DESCRIPTION "
+# Exclua a primeira linha do arquivo temporário para remover o colchete de abertura
+sed -i -e " 1d "  $TEMP_CONFIG_FILE
+# Anexar arquivo temporário ao arquivo de configuração
+cat $TEMP_CONFIG_FILE  >>  $OUTPUT_CONFIG_FILE
+# Excluir arquivo temporário
+rm $TEMP_CONFIG_FILE
+eco
+echo  " ==============> CONFIGURAÇÃO FINAL ============== "
+eco
+gato $OUTPUT_CONFIG_FILE
+gerar_start_script
+gerar_test_script
+echo  " **** Configuração/compilação concluída *** "
